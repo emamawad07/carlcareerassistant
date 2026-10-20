@@ -1887,6 +1887,8 @@ function brief(){
   const v=st.view;
   if(v==="chart") return chartBrief();
   if(v==="alumni") return alumniBrief();
+  if(v==="all") return allBrief();
+  if(v==="byfac") return byfacBrief();
   if(v==="quotes") return quotesBrief();
   if(v==="people"){ const pq=st.pq; return {show:pq.who, say:pq.avgMode?`Here are ${pq.who}.`:`${pq.k} ${pq.who}.`}; }
   if(v==="yearbars") return yearbarsBrief();
@@ -1974,7 +1976,7 @@ function brief(){
     if(E==null||Fn==null) return {show:`Three-way comparison${where}: not enough data`, say:`${cap(where.trim()||"Here")} there isn't enough data in every group to compare fairly, so I can only show what we have.`};
     const g=gs[1], gn=g.name==="Graduates"?"graduates":"final-year students", rows=SK.map(k=>({k,g:g.d.means[k]-(gs[2].d?gs[2].d.means[k]:g.d.means[k])})).sort((a,b)=>b.g-a.g);
     return {show:`${gs[0].name} ${f2(E)} · ${g.name} ${f2(Fn)}${S!=null?` · Lecturers ${f2(S)}`:""}${where?" ·"+where:""}`,
-      say:`${g.proxy?`There aren't enough alumni${where} yet, so final-year students stand in for graduates. `:`Here are current students, ${AL&&!g.proxy?AL.n+" ":""}graduates and lecturers${where}. `}${cap(gn)} rate themselves ${rel(Fn-E).replace("right in line with","about the same as")} current students${S!=null?`, and lecturers rate the typical student ${S<Math.min(E,Fn)-.1?"lower than either group rates itself":S>Math.max(E,Fn)+.1?"higher than either group":"about level with them"}`:""}. ${S!=null?`The biggest gap between ${gn} and lecturers is ${sl(rows[0].k)}.`:""}`.replace(/\s+/g," ").trim()}; }
+      say:`${g.proxy?`There aren't enough alumni${where} yet, so final-year students stand in for graduates. `:`Here are current students, ${AL&&!g.proxy?g.d.n+" ":""}graduates and lecturers${where}. `}${cap(gn)} rate themselves ${rel(Fn-E).replace("right in line with","about the same as")} current students${S!=null?`, and lecturers rate the typical student ${S<Math.min(E,Fn)-.1?"lower than either group rates itself":S>Math.max(E,Fn)+.1?"higher than either group":"about level with them"}`:""}. ${S!=null?`The biggest gap between ${gn} and lecturers is ${sl(rows[0].k)}.`:""}`.replace(/\s+/g," ").trim()}; }
   if(v==="yearheat"){ const fac=st.yearFac, src=fac?F[fac].yearMeans:Object.fromEntries(YEARS.map(y=>[y,D.years[y].means])), ys=YEARS.filter(y=>src[y]);
     const top=ys.map(y=>ranked(src[y])[0].k), allSame=top.every(k=>k===top[0]), low=ys.map(y=>ranked(src[y])[17].k), lowSame=low.filter(k=>k===low[0]).length;
     return {show:`Skills by year group${fac?" · "+fs_(fac):" · all faculties"}`, say:`Here's every skill for each year group${fac?" in "+fsay(fac):", across all faculties"}. ${allSame?`${cap(sl(top[0]))} is the top skill in every year.`:`The top skill shifts from ${sl(top[0])} in ${ys[0]} to ${sl(top[top.length-1])} in ${ys[ys.length-1]}.`} ${cap(sl(low[0]))} is the weakest in ${lowSame===ys.length?"every year group":lowSame+" of "+ys.length+" year groups"}.`}; }
@@ -2058,6 +2060,7 @@ function parse(raw){
   const voice=has(/\b(?:what|which) (?:do |would |did )?(?:our |the )?students (?:want|wish|need|ask|say|like)|\bstudents? (?:want|wish|asked? for|are asking|would like|said)|\bstudent voice|in their own words|\bquotes?\b|what (?:are|were) students asking/);
   const over=has(/\btop\b|best|strong|weak|help|gaps?|lowest|highest|overview|summary|home|reset|struggl|improve|overall|bue students|show me (?:the )?skills|^ *skills *$/);
   if(mapQ && !cls.length && !facs.length) return {view:"heat", group, skills:skills.length>1?skills:[]};
+  if(mapping && !galQ && !cls.length && !facs.length && !skills.length && !group && !needs && !perception && !voice && !expQ && AL) return {view:"all"};
   if((galQ||mapping) && !cls.length && !facs.length && !needs && !perception && !voice && !expQ) return {view:"galaxy", group, skills};
   if(allCl || cls.length>=2) return {view:"clusters", cls:cls.length>=2?cls:CLK.slice(), skills, group};
   if(cls.length===1) return {view:"cluster", cl:cls[0], skills, group};
@@ -2235,7 +2238,7 @@ function scopeOf(e){
 }
 function localFacts(t, e){
   const sc=scopeOf(e);
-  { const a=whyContext(t,e)||alumniAsk(t,e)||leadAsk(t,e)||diffAsk(t,e)||themeAsk(t,e)||corrAsk(t,e)||qRun(t,e); if(a) return a; }
+  { const a=whyContext(t,e)||allAsk(t,e)||alumniAsk(t,e)||leadAsk(t,e)||diffAsk(t,e)||themeAsk(t,e)||corrAsk(t,e)||qRun(t,e); if(a) return a; }
   if(!e.facs.length && !e.cls.length && !e.skills.length && !e.group && !/\b(facult\w*|clusters?|years?|lecturers?|staff|career cent\w*|we|us|our)\s+(?:should|need|do|must)\b/.test(t)){
     if(/\bneed\w* to (?:improve|work on|develop|get better)|\bimprove (?:upon|on)\b|\bneed (?:the )?most (?:help|support|work)\b|\bareas? (?:for|of|to) (?:improve\w*|development|growth)\b|\broom for improvement\b|\bwhere (?:are|do) (?:they|students|our students) (?:fall short|struggle|lack|fall behind)\b|\bwhat (?:do|should|must) (?:they|students|our students) (?:improve|work on|develop|get better at)\b|\b(?:students'?|their|our) weak(?:nesses| spots| points)\b/.test(t)) return {patch:{view:"overview", focus:{dir:"bottom", n:3}}};
     if(/\bwhat are (?:they|students|our students) (?:good|best|strongest) at\b|\b(?:students'?|their|our students'?) strengths\b|\bwhere (?:are|do) (?:they|students|our students) (?:excel|shine|do best)\b/.test(t)) return {patch:{view:"overview", focus:{dir:"top", n:3}}};
@@ -3142,6 +3145,7 @@ function quotesBrief(){
 const QUAL_RX=/\b(written|qualitative|open[- ]ended|free[- ]text|comments?|verbatim|testimonials?|quotes?|quotations|in their (?:own )?words|wrote|write|writing|responses|feedback|what (?:did|do|does) (?:the |our )?(?:students?|they|respondents|people|lecturers|staff|faculties) (?:say|said|tell us|told us|write|mention)|(?:students?|they) (?:said|say|wrote|mentioned|told us))\b/;
 function qualAsk(t, e){
   const pending=st.pending==="qual";
+  if(AL && ALUM_RX.test(t)) return null;
   if(!pending && !QUAL_RX.test(t) && !/\bwhat do (?:\w+ )?students (?:want|ask for) (?:the )?most\b|\bmost (?:common|popular|requested) (?:requests?|asks?|answers?)\b/.test(t)) return null;
   if(/\b(how many|percent|rate|rated|score)\b/.test(t) && !QUAL_RX.test(t)) return null;
   if(!pending && /\b(?:responses|feedback|comments?|answers)\b/.test(t) && !/\b(written|write|wrote|qualitative|open[- ]ended|quotes?|in their words|what (?:did|do) .* (?:say|write))\b/.test(t) && /\b(triangle|compar\w*|fewest|least|most|how many|which (?:faculty|year)|number of|rate|percent\w*|graduates?|undergrad\w*)\b/.test(t)) return null;
@@ -3187,6 +3191,8 @@ function leadSet(t, e){
   const yrs=fc=>{ const src=fc?F[fc].yearMeans:Object.fromEntries(YEARS.map(y=>[y,D.years[y].means])), ys=YEARS.filter(y=>src[y]);
     return {kind:"year", keys:ys, means:k=>exMeans("y"+(fc||"")+k,r=>r.y===+k.slice(-1)&&(!fc||r.f===fc)), name:k=>k+" students", short:k=>k, patch:{view:"yearheat", yearFac:fc||null}}; };
   const gen={kind:"g", keys:["F","M"], means:k=>exMeans("g"+k,r=>r.g===k), name:k=>k==="F"?"female students":"male students", short:k=>k==="F"?"Female":"Male", patch:{view:"gender"}, note:" Gender is estimated from first names."};
+  if(AL && (st.view==="all"||st.view==="byfac") && !/\b(clusters?|years?|gender|facult\w*)\b/.test(t) && !e.facs.length){ const {s,l,a}=SRC();
+    return {kind:"src", keys:["S","A","L"], means:k=>k==="S"?s:k==="A"?a:l, name:k=>k==="S"?"current students":k==="A"?"alumni":"lecturers", short:k=>k==="S"?"Students":k==="A"?"Alumni":"Lecturers", patch:{view:st.view}}; }
   if(AL && (ALUM_RX.test(t) || (st.view==="alumni" && !/\b(clusters?|facult\w*|years?|gender)\b/.test(t)))){ const fm=finalMeans(), am=allMeans();
     return {kind:"al", keys:["A","F","S"], means:k=>k==="A"?AL.means:k==="F"?fm:am, name:k=>k==="A"?"alumni":k==="F"?"final-year students":"all current students", short:k=>k==="A"?"Alumni":k==="F"?"Final years":"All students", patch:{view:"alumni"}, note:" It's a small group of alumni, so treat it as a signal."}; }
   // the question names the set
@@ -3378,6 +3384,7 @@ function whyContext(t, e){
   if(v==="overview"){ const fo=ovFocus()||{dir:strongW&&!weakW?"top":"bottom", n:3}, r=ranked(D.overall), keys=(fo.dir==="top"?r.slice(0,fo.n||3):r.slice(-(fo.n||3)).reverse()).map(x=>x.k);
     return {patch:{view:"overview", focus:fo}, show:`Why the ${fo.dir==="top"?"top":"bottom"} ${keys.length}`, say:whySkills(keys, fo.dir)}; }
   if(v==="alumni") return {patch:{view:"alumni"}, show:"Why alumni rate themselves higher", say:whyAlumni()};
+  if(v==="all"||v==="byfac") return {patch:{view:v}, show:"What the three sources tell us", say:whyAll()};
   if(v==="years"||v==="yearbars"||v==="yearheat") return {patch:{view:v, yearFac:st.yearFac, yrHl:st.yrHl}, show:"Why confidence grows by year", say:whyYears()};
   if(v==="people"&&st.pq){ const s=whyPeople(st.pq); if(s) return {patch:{view:"people", pq:st.pq}, show:"Who they are", say:s}; }
   if(v==="gender") return {patch:{view:"gender", gScope:st.gScope}, show:"Why the gender pattern", say:whyGender()};
@@ -3430,7 +3437,7 @@ function alumniAsk(t, e){
     return {patch:base, show:`${AL.n} alumni · ${c.map(y=>`${y}: ${AL.byClass[y].n}`).join(" · ")}`, say:`${AL.n} alumni answered: ${listJoin(c.map(y=>`${AL.byClass[y].n} from the class of ${y}`))}. Most studied ${fsay(f[0][0])} and ${fsay(f[1][0])}, ${f[0][1]===f[1][1]?`${f[0][1]} each`:`with ${f[0][1]} and ${f[1][1]}`}.`}; }
   if(/\b(which|what) facult|\bwhere did they study\b|\bby faculty\b/.test(t)){ const f=Object.entries(AL.facN).sort((a,b)=>b[1]-a[1]);
     return {patch:base, show:f.map(([c,n])=>`${fs_(c)} ${n}`).join(" · "), say:`Most of the alumni studied ${fsay(f[0][0])} and ${fsay(f[1][0])}, ${f[0][1]} each${f[0][1]!==f[1][1]?` and ${f[1][1]}`:""}, followed by ${fsay(f[2][0])} with ${f[2][1]}. Several faculties have only a handful, so I wouldn't compare faculties on alumni yet.`.replace(`, ${f[0][1]} each and`, `, with ${f[0][1]} and`)}; }
-  if(/\bwant|wish|ask(?:ed|ing)? for|help with|develop|need from us|would like|written|wrote|say\b/.test(t)){ const w=Object.entries(AL.wishes).sort((a,b)=>b[1]-a[1]), q=AL.quotes.find(x=>x.length>=50&&x.length<=160)||AL.quotes[0];
+  if(/\bwant|wish|ask(?:ed|ing)? for|help with|develop|need from us|would like|written|wrote|write|quotes?|say\b/.test(t)){ const w=Object.entries(AL.wishes).sort((a,b)=>b[1]-a[1]), q=AL.quotes.find(x=>x.length>=50&&x.length<=160)||AL.quotes[0];
     return {patch:base, show:`Alumni ask for: ${w.slice(0,3).map(x=>x[0]).join(" · ")}`, say:`Alumni most want help with ${lc(w[0][0].replace(/&/g,"and"))} and ${lc(w[1][0].replace(/&/g,"and"))}, then ${lc(w[2][0].replace(/&/g,"and"))}.${q?` One graduate wrote: ${q}`:""}`}; }
   if(/\b(?:20)?25\b.*\b(?:20)?26\b|\b(?:20)?26\b.*\b(?:20)?25\b|\bby class\b|\beach class\b|\bclasses\b|\bclass of\b/.test(t) && alClasses().length>1){ const [a,b]=alClasses(), A=AL.byClass[a], B=AL.byClass[b], dd=gm(A.means,SK)-gm(B.means,SK);
     return {patch:base, show:`Class of ${a}: ${f2(gm(A.means,SK))} (${A.n}) · Class of ${b}: ${f2(gm(B.means,SK))} (${B.n})`, say:`The class of ${a} averages ${f2(gm(A.means,SK))} and the class of ${b} ${f2(gm(B.means,SK))}, so ${Math.abs(dd)<.06?"they're about the same":`the class of ${dd>0?a:b} rates itself a little higher`}. The groups are small, so I wouldn't read much into it.`}; }
@@ -3446,6 +3453,79 @@ function alumniAsk(t, e){
 function whyAlumni(){
   const ae=AL.exp, fy=D.yearExp["Year 4"], f5=D.yearExp["Year 5"], fn=fy.n+f5.n, ai=Math.round(ae["Internship"]/AL.n*100), fi=Math.round((fy.exp["Internship"]+f5.exp["Internship"])/fn*100);
   return `The data shows alumni have had more real-world exposure: ${ai} percent of them did an internship, against ${fi} percent of final-year students. They're also looking back with work experience, which tends to build confidence. Bear in mind it's ${AL.n} people who chose to answer, so the most engaged graduates may be over-represented.`;
+}
+
+/* =====================================================================
+   All data together: students, faculty forms and alumni (triangulation)
+   ===================================================================== */
+const SRC=()=>{ const s=allMeans(), l=staffMeans(CODES).means, a=AL?AL.means:null; return {s,l,a}; };
+const rankOf=m=>{ const r=ranked(m); return k=>r.findIndex(x=>x.k===k)+1; };
+function agreement(){
+  const {s,l,a}=SRC(), rs=rankOf(s), rl=rankOf(l), ra=a?rankOf(a):()=>null;
+  const rows=SK.map(k=>({k, rs:rs(k), rl:rl(k), ra:ra(k), avg:(rs(k)+rl(k)+(a?ra(k):rs(k)))/3}));
+  const weak=rows.filter(x=>x.rs>=12&&x.rl>=12&&(!a||x.ra>=12)).sort((p,q)=>q.avg-p.avg);
+  const strong=rows.filter(x=>x.rs<=7&&x.rl<=7&&(!a||x.ra<=7)).sort((p,q)=>p.avg-q.avg);
+  const dis=rows.map(x=>({...x, gap:Math.abs(x.rs-x.rl)})).sort((p,q)=>q.gap-p.gap);
+  return {rows, weak, strong, dis, s, l, a};
+}
+V.all=()=>{
+  const g=agreement(), gs=triData({type:"bue"}), rk=x=>`S #${x.rs} · ${AL?`A #${x.ra} · `:""}L #${x.rl}`;
+  const list=(arr,col)=>arr.length?hbars(arr.slice(0,3).map(x=>({label:`${sn(x.k)} · ${rk(x)}`, v:19-x.avg, text:"", color:col})),18):`<p class="qt">No skill sits there in all three.</p>`;
+  const d=g.dis[0];
+  return { label:"All data",
+    left: holo(`All responses together · <em>students · ${AL?"alumni · ":""}lecturers</em>`, triangle(gs), "fill"),
+    right: tiles([[D.n.toLocaleString("en-GB"),"students"],[String(FORM_CODES.length),"faculty forms"]].concat(AL?[[String(AL.n),"alumni"]]:[]))
+      + holo("All sources agree: weakest", list(g.weak.length?g.weak:g.rows.slice().sort((p,q)=>q.avg-p.avg), RED))
+      + holo("All sources agree: strongest", list(g.strong.length?g.strong:g.rows.slice().sort((p,q)=>p.avg-q.avg), GREEN))
+      + holo("Biggest disagreement", `<p class="qt"><b>${h(sn(d.k))}</b>: students rank it #${d.rs} of 18, lecturers #${d.rl}${AL?`, alumni #${d.ra}`:""}.</p>`) };
+};
+function allBrief(){
+  const g=agreement(), w=(g.weak.length?g.weak:g.rows.slice().sort((p,q)=>q.avg-p.avg)).slice(0,2), s=(g.strong.length?g.strong:g.rows.slice().sort((p,q)=>p.avg-q.avg)).slice(0,2), d=g.dis[0];
+  const S=gm(g.s,SK), L=gm(g.l,SK), A=g.a?gm(g.a,SK):null;
+  return {show:`${D.n.toLocaleString("en-GB")} students · ${FORM_CODES.length} faculty forms${AL?` · ${AL.n} alumni`:""}`,
+    say:`Here's everything together: ${D.n.toLocaleString("en-GB")} students, ${FORM_CODES.length} faculty forms${AL?` and ${AL.n} alumni`:""}. All three sources agree that ${listJoin(w.map(x=>sl(x.k)))} ${w.length>1?"are weak spots":"is a weak spot"}, and that ${listJoin(s.map(x=>sl(x.k)))} ${s.length>1?"are strengths":"is a strength"}. ${A!=null?`Alumni rate themselves highest, at ${f2(A)}, then current students at ${f2(S)}, while lecturers rate the typical student lowest, at ${f2(L)}.`:""} The biggest disagreement is ${sl(d.k)}: students rank it ${d.rs} of 18, but lecturers rank it ${d.rl}.`};
+}
+/* faculty by faculty: students, alumni and lecturers side by side */
+const AL_MIN=8;
+V.byfac=()=>{
+  const codes=CODES.filter(c=>F[c].n>=SMALL||F[c].form||(AL&&AL.facMeans[c])), rows=codes.map(c=>({label:fs_(c), c, hl:!!(AL&&AL.facMeans[c]), vals:{s:gm(F[c].means,SK), a:AL&&AL.facMeans[c]?gm(AL.facMeans[c],SK):null, l:F[c].form?gm(F[c].form.ratings,SK):null}}))
+    .sort((p,q)=>(q.vals.s)-(p.vals.s));
+  const series=[{key:"s",name:"Students",color:HOLO},{key:"a",name:`Alumni (${AL_MIN}+ per faculty)`,color:GOLD},{key:"l",name:"Lecturers",color:PINK}];
+  const cmp=codes.filter(c=>AL&&AL.facMeans[c]).map(c=>({c, d:gm(AL.facMeans[c],SK)-gm(F[c].means,SK)})).sort((p,q)=>q.d-p.d);
+  return { label:"By faculty",
+    left: holo(`Every source, faculty by faculty · <em>average of 18 skills</em>`, genericDots(rows, series, {lo:2.5, hi:5}).replace("hsvg fixed","hsvg"), "fill"),
+    right: tiles([[String(cmp.length),"faculties with enough alumni"],[String(FORM_CODES.length),"faculties with lecturer ratings"]])
+      + (cmp.length?holo("Alumni minus current students", hbars(cmp.map(x=>({label:`${fs_(x.c)} · ${AL.facN[x.c]} alumni`, v:Math.abs(x.d), text:(x.d>=0?"+":"−")+f2(Math.abs(x.d)), color:x.d>=0?GOLD:RED})), Math.max(...cmp.map(x=>Math.abs(x.d)),.1))):"")
+      + holo("Note", `<p class="qt">Alumni are shown only where a faculty has ${AL_MIN} or more. Other faculties have too few graduates to compare yet.</p>`) };
+};
+function byfacBrief(){
+  const cmp=CODES.filter(c=>AL&&AL.facMeans[c]).map(c=>({c, d:gm(AL.facMeans[c],SK)-gm(F[c].means,SK)})).sort((p,q)=>q.d-p.d);
+  const lowL=FORM_CODES.map(c=>({c,d:gm(F[c].form.ratings,SK)-gm(F[c].means,SK)})).sort((p,q)=>p.d-q.d);
+  return {show:"Students, alumni and lecturers by faculty",
+    say:`Here's each faculty with all three sources. We have enough alumni to compare in ${cmp.length} faculties: ${listJoin(cmp.map(x=>fsay(x.c)))}. ${cmp.length?`In ${cmp.filter(x=>x.d>0).length===cmp.length?"all of them":cmp.filter(x=>x.d>0).length+" of them"}, alumni rate themselves higher than current students, most of all in ${fsay(cmp[0].c)}, by ${f2(cmp[0].d)}.`:""} Lecturers rate students below the students' own view in ${lowL.filter(x=>x.d<0).length} of ${FORM_CODES.length} faculties, with the widest gap in ${fsay(lowL[0].c)}.`};
+}
+function allAsk(t, e){
+  const src=[/\bstudents?\b/.test(t), /\b(faculty (?:responses|forms?|data|survey)|faculties' (?:responses|views)|lecturers?|staff|academics)\b/.test(t), /\b(alumni|graduates|grads)\b/.test(t)].filter(Boolean).length;
+  const allW=/\b(all (?:the )?(?:data|responses|sources|surveys|forms|results)|all (?:three|3)|everything together|every source|all together|altogether|combined|triangulat\w*|whole data ?set|full picture|all of the data)\b/.test(t);
+  const byFac=/\bby faculty\b|\bper faculty\b|\beach faculty\b|\bfaculty by faculty\b|\bfor every faculty\b|\bacross (?:the )?faculties\b/.test(t);
+  if(!(allW || src>=2)) {
+    // drilling into one source
+    if(/\b(student (?:data|responses|survey|results|answers)|students' (?:data|responses|answers)|survey of students)\b/.test(t)) return {patch:{view:"overview", skills:[], group:null}, sayPrefix:"Here's the student survey. "};
+    if(AL && /\b(alumni|graduates?|grads)\b/.test(t) && /\b(data|responses|survey|results|answers|form)\b/.test(t)) return {patch:{view:"alumni", skills:[], group:null}};
+    if(/\b(faculty (?:data|responses|forms?|survey|results|answers)|lecturers?' (?:data|responses|views|ratings)|staff (?:data|responses|survey)|career mapping form)\b/.test(t)) return {patch:{view:"needs", skills:[], group:null}};
+    return null; }
+  const hasA=/\b(alumni|graduates|grads)\b/.test(t), hasL=/\b(faculty (?:responses|forms?|data|survey)|faculties' (?:responses|views)|lecturers?|staff|academics)\b/.test(t);
+  if(!allW && !hasA && !byFac) return null;   // students vs lecturers only: the staff-vs-students screen
+  if(!allW && !byFac && (/\btriangle\b|\bthree[- ]way\b/.test(t) || (hasA && hasL && !/\b(data|responses|results|everything)\b/.test(t)))) return {patch:{view:"triangle", triScope:e.facs.length===1?{type:"fac",key:e.facs[0]}:e.cls.length===1?{type:"cl",key:e.cls[0]}:{type:"bue"}, skills:[], group:null}};
+  if(e.facs.length===1 && !byFac) return {patch:{view:"triangle", triScope:{type:"fac", key:e.facs[0]}, skills:[], group:null}};
+  if(e.cls.length===1 && !byFac) return {patch:{view:"triangle", triScope:{type:"cl", key:e.cls[0]}, skills:[], group:null}};
+  if(byFac) return {patch:{view:"byfac", skills:[], group:null}};
+  if(src>=2 && !allW && /\b(alumni|graduates)\b/.test(t) && /\bstudents?\b/.test(t) && !/\b(lecturers?|staff|faculty responses)\b/.test(t)) return null; // alumni vs students: the alumni screen
+  return {patch:{view:"all", skills:[], group:null}};
+}
+function whyAll(){
+  const g=agreement(), w=(g.weak.length?g.weak:g.rows.slice().sort((p,q)=>q.avg-p.avg))[0], d=g.dis[0];
+  return `The data shows each group is answering a slightly different question. Students and alumni rate themselves, while lecturers rate the typical student in their faculty, so lecturers come out lower almost everywhere. That's why the useful signal is where they agree: ${sl(w.k)} sits near the bottom for all three, so it's a real gap, not one group's opinion. Where they disagree most, on ${sl(d.k)}, students may be overconfident or lecturers may not see that skill in class.`;
 }
 
 /* ---------- any screen, any chart: "show this as a pie chart" ---------- */
@@ -3527,6 +3607,7 @@ function chartData(){
     return {title:`${nb} vs ${na.toLowerCase()}`, kind:"score", items:[{label:na, v:gm(A,SK), color:HOLO},{label:nb, v:gm(B,SK), color:GOLD}], multi:groupMulti([{name:na,color:HOLO,means:A},{name:nb,color:GOLD,means:B}])}; }
   if(v==="people"&&st.pq&&st.pq.groups) return {title:`${st.pq.ct?st.pq.ct.short:"Share"} · ${st.pq.who} · by ${st.pq.dim==="year"?"year":st.pq.dim==="g"?"gender":st.pq.dim==="cl"?"cluster":"faculty"}`, kind:"pct", items:st.pq.groups.map(g=>({label:g.label, v:Math.round(g.p)})).sort(byV)};
   if(v==="quotes"&&!(st.qf&&st.qf.staff)){ const codes=st.qf&&st.qf.fac?[st.qf.fac]:null; return {title:`What ${codes?fs_(codes[0])+" ":""}students ask us for · mentions`, kind:"count", items:THEMES.map((th,i)=>({label:th, v:themeCount(i,codes)})).filter(x=>x.v>0).sort(byV)}; }
+  if((v==="all"||v==="byfac")&&AL){ const {s,l,a}=SRC(); return {title:"Students · alumni · lecturers", kind:"score", items:[{label:"Students",v:gm(s,SK),color:HOLO},{label:"Alumni",v:gm(a,SK),color:GOLD},{label:"Lecturers",v:gm(l,SK),color:PINK}], multi:groupMulti([{name:"Students",color:HOLO,means:s},{name:"Alumni",color:GOLD,means:a},{name:"Lecturers",color:PINK,means:l}])}; }
   if(v==="alumni"&&AL) return {title:"Alumni · all 18 skills", kind:"score", items:SK.map(k=>({label:sn(k), v:AL.means[k]})).sort(byV), multi:groupMulti([{name:"Alumni",color:GOLD,means:AL.means},{name:"Final years",color:HOLO,means:finalMeans()},{name:"All students",color:BLUE,means:allMeans()}])};
   if(v==="rank"&&st.rank){ const R=st.rank, items=R.items.map(x=>({label:x.label, v:x.v}));
     return {title:R.title, kind:items.every(x=>x.v<=5)?"score":"count", items}; }
@@ -3922,6 +4003,7 @@ async function ask(q){
     if(/^(?:and |but |ok |okay )?(?:what about|how about|and|only|just|now|same for|same but)\b/.test(t)){ const nf=qFilters(t,e0);
       if(dims(nf)){ const f={...pq.f}; ["facs","years","g","exp"].forEach(k=>{ if(nf[k]) f[k]=nf[k]; }); const r=qAnswer(f, pq.c, null, false, false, t); return render(r.patch,{heard:q, show:r.show, say:r.say}); } }
   }
+  { const aa=allAsk(t, e0); if(aa) return render(aa.patch,{heard:q}); }
   { const qa=qualAsk(t, e0);
     if(qa&&qa.clarify) return clarify(q, [["What students want most","what do students say they want the most"],["Quotes about internships","what did students write about internships"],["What one faculty wrote","what did Law students write"],["What lecturers told us","what did the lecturers write"]],
       "Of course. Which responses are you looking for? I can show what students want most, quotes on a theme like internships or presentation, what one faculty's students wrote, or what the lecturers told us.", "Which written responses would you like?", "qual");
@@ -4030,7 +4112,7 @@ return { enter, ask, leave, parse, escape, _local:q=>localDeep(q), _st:()=>st, _
 })();
 S.skills = { listen:true, say:()=>[] };
 
-$("skillsBtn").onclick = () => current === "skills" ? SkillsHUD.leave() : SkillsHUD.enter({view:"galaxy"});
+$("skillsBtn").onclick = () => current === "skills" ? SkillsHUD.leave() : SkillsHUD.enter({view:"all"});
 /* ---------- Carl's living sphere: a 3D particle globe that breathes, turns and ripples with his voice ---------- */
 (function(){
   const cv=document.getElementById("sphere"); if(!cv) return; const g=cv.getContext("2d");
@@ -4074,7 +4156,7 @@ $("skillsBtn").onclick = () => current === "skills" ? SkillsHUD.leave() : Skills
   requestAnimationFrame(draw);
 })();
 
-if (/skills/i.test(location.hash + location.search)) SkillsHUD.enter({view:"galaxy"}); else attract();
+if (/skills/i.test(location.hash + location.search)) SkillsHUD.enter({view:"all"}); else attract();
 </script>
 </body>
 </html>
